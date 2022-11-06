@@ -27,7 +27,7 @@ class PropController extends AbstractFOSRestController
             throw $this->createNotFoundException('Property not found');
         }
 
-        return $this->view();
+        return $this->view($data);
     }
 
     #[Route('/prop', name: 'app_prop_add', methods: ['POST'])]

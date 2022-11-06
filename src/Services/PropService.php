@@ -101,13 +101,14 @@ class PropService
         }
 
         $data = [
-            'id' => $prop->getId(),
-            'property' => $prop->getName()
+            [
+                'id' => $prop->getId(),
+                'property' => $prop->getName()
+            ]
         ];
 
-        $relations = [];
         foreach ($prop->getChildren() as $c) {
-            $relations[] = [
+            $data[] = [
                 'id' => $c->getId(),
                 'relation' => 'child',
                 'property' => $c->getName()
@@ -115,7 +116,7 @@ class PropService
         }
 
         foreach ($prop->getParents() as $p) {
-            $relations[] = [
+            $data[] = [
                 'id' => $p->getId(),
                 'relation' => 'parent',
                 'property' => $p->getName()
@@ -123,7 +124,7 @@ class PropService
 
             foreach ($p->getChildren() as $c) {
                 if ($c->getId() !== $prop->getId()) {
-                    $relations[] = [
+                    $data[] = [
                         'id' => $c->getId(),
                         'relation' => 'sibling',
                         'property' => $c->getName()
@@ -132,8 +133,7 @@ class PropService
             }
         }
 
-        usort($relations, fn ($p1, $p2) => $p1['property'] <=> $p2['property']);
-        $data['relations'] = $relations;
+        usort($data, fn ($p1, $p2) => $p1['property'] <=> $p2['property']);
 
         return $data;
     }
