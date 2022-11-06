@@ -39,8 +39,102 @@ class PropService
     /**
      * @return Prop[]
      */
-    public function getAll(): array
+    public function getTree(): array
     {
-        return $this->propRepository->findAll();
+        $data = [];
+        $props = $this->propRepository->getRootProps();
+        foreach ($props as $prop) {
+            $data[] = [
+                'id' => $prop->getId(),
+                'name' => $prop->getName(),
+                'children' => $this->getChildrenTree($prop)
+            ];
+        }
+
+        return $data;
+    }
+
+    public function getChildrenTree(Prop $prop): array
+    {
+        $tree = [];
+        $children = $prop->getChildren();
+        foreach ($children as $child) {
+            $tree[] = [
+                'id' => $child->getId(),
+                'name' => $child->getName(),
+                'children' => $this->getChildrenTree($child)
+            ];
+        }
+
+        return $tree;
+    }
+
+    public function isParentToSelf(Prop $prop, Prop $parent): bool
+    {
+        if ($prop->getId() === $parent->getId()) {
+            return true;
+        }
+
+        $parents = $parent->getParents();
+        foreach ($parents as $p) {
+            if ($this->isParentToSelf($prop, $p)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public function addToParent(Prop $prop, Prop $parent): void
+    {
+        $em = $this->doctrine->getManager();
+        $prop->addParent($parent);
+        $em->persist($prop);
+        $em->flush();
+    }
+
+    public function getPropData(int $id): ?array
+    {
+        $prop = $this->propRepository->find($id);
+        if (is_null($prop)) {
+            return null;
+        }
+
+        $data = [
+            'id' => $prop->getId(),
+            'property' => $prop->getName()
+        ];
+
+        $relations = [];
+        foreach ($prop->getChildren() as $c) {
+            $relations[] = [
+                'id' => $c->getId(),
+                'relation' => 'child',
+                'property' => $c->getName()
+            ];
+        }
+
+        foreach ($prop->getParents() as $p) {
+            $relations[] = [
+                'id' => $p->getId(),
+                'relation' => 'parent',
+                'property' => $p->getName()
+            ];
+
+            foreach ($p->getChildren() as $c) {
+                if ($c->getId() !== $prop->getId()) {
+                    $relations[] = [
+                        'id' => $c->getId(),
+                        'relation' => 'sibling',
+                        'property' => $c->getName()
+                    ];
+                }
+            }
+        }
+
+        usort($relations, fn ($p1, $p2) => $p1['property'] <=> $p2['property']);
+        $data['relations'] = $relations;
+
+        return $data;
     }
 }
