@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Entity\Prop;
+use App\Repository\AncestorRepository;
 use App\Repository\PropRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -10,7 +11,8 @@ class PropService
 {
     public function __construct(
         private readonly PropRepository $propRepository,
-        private readonly ManagerRegistry $doctrine
+        private readonly ManagerRegistry $doctrine,
+        private readonly AncestorRepository $ancestorRepository
     ) {}
 
     public function getByName(string $name): Prop|null
@@ -31,7 +33,18 @@ class PropService
             $em->persist($parent);
         }
 
-        $em->flush();
+        $em->getConnection()->beginTransaction();
+        try {
+            $em->flush();
+
+            $this->ancestorRepository->createAncestors($prop, $parent);
+            $em->flush();
+
+            $em->getConnection()->commit();
+        } catch (\Throwable $exception) {
+            $em->getConnection()->rollBack();
+            throw $exception;
+        }
 
         return $prop;
     }
@@ -75,14 +88,7 @@ class PropService
             return true;
         }
 
-        $parents = $parent->getParents();
-        foreach ($parents as $p) {
-            if ($this->isParentToSelf($prop, $p)) {
-                return true;
-            }
-        }
-
-        return false;
+        return $this->ancestorRepository->isAncestorToOther($prop->getId(), $parent->getId());
     }
 
     public function addToParent(Prop $prop, Prop $parent): void
@@ -90,7 +96,19 @@ class PropService
         $em = $this->doctrine->getManager();
         $prop->addParent($parent);
         $em->persist($prop);
-        $em->flush();
+
+        $em->getConnection()->beginTransaction();
+        try {
+            $em->flush();
+
+            $this->ancestorRepository->updatePropTreeAncestors($prop, $parent);
+            $em->flush();
+
+            $em->getConnection()->commit();
+        } catch (\Throwable $exception) {
+            $em->getConnection()->rollBack();
+            throw $exception;
+        }
     }
 
     public function getPropData(int $id): ?array
