@@ -100,38 +100,11 @@ class PropService
             return null;
         }
 
-        $data = [
-            [
-                'id' => $prop->getId(),
-                'property' => $prop->getName()
-            ]
+        $data = $this->propRepository->getRelations($id);
+        $data[] = [
+            'id' => $prop->getId(),
+            'property' => $prop->getName()
         ];
-
-        foreach ($prop->getChildren() as $c) {
-            $data[] = [
-                'id' => $c->getId(),
-                'relation' => 'child',
-                'property' => $c->getName()
-            ];
-        }
-
-        foreach ($prop->getParents() as $p) {
-            $data[] = [
-                'id' => $p->getId(),
-                'relation' => 'parent',
-                'property' => $p->getName()
-            ];
-
-            foreach ($p->getChildren() as $c) {
-                if ($c->getId() !== $prop->getId()) {
-                    $data[] = [
-                        'id' => $c->getId(),
-                        'relation' => 'sibling',
-                        'property' => $c->getName()
-                    ];
-                }
-            }
-        }
 
         usort($data, fn ($p1, $p2) => $p1['property'] <=> $p2['property']);
 
