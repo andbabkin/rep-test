@@ -40,15 +40,6 @@ class PropRepository extends ServiceEntityRepository
         }
     }
 
-    public function getRootProps(): array
-    {
-        return $this->createQueryBuilder('p')
-            ->leftJoin('p.parents', 'r')
-            ->where('r.id IS NULL')
-            ->getQuery()
-            ->getResult();
-    }
-
     public function getRelations(int $propId): array
     {
         $sql = <<<'SQL'
@@ -74,6 +65,29 @@ SQL;
         return $this->getEntityManager()
             ->createNativeQuery($sql, $rsm)
             ->setParameter('id', $propId)
+            ->getResult();
+    }
+
+    public function getTreeData(): array
+    {
+        $sql = <<<'SQL'
+            SELECT DISTINCT a.ancestor_id AS ancestor, a.prop_id AS prop, p.name AS prop_name, h.child_id AS child
+            FROM ancestors a
+            INNER JOIN props p ON p.id = a.prop_id
+            LEFT OUTER JOIN hierarchy h ON h.parent_id = a.prop_id
+            WHERE a.ancestor_id IN (
+                SELECT id FROM props p2 WHERE NOT EXISTS(SELECT 1 FROM hierarchy WHERE child_id = p2.id)
+            )
+SQL;
+
+        $rsm = new ResultSetMapping();
+        $rsm->addScalarResult('ancestor', 'ancestorId');
+        $rsm->addScalarResult('prop', 'propId');
+        $rsm->addScalarResult('prop_name', 'propName');
+        $rsm->addScalarResult('child', 'childId');
+
+        return $this->getEntityManager()
+            ->createNativeQuery($sql, $rsm)
             ->getResult();
     }
 }

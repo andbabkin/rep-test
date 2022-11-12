@@ -5,14 +5,17 @@ namespace App\Services;
 use App\Entity\Prop;
 use App\Repository\AncestorRepository;
 use App\Repository\PropRepository;
+use App\Services\PropTree\TreeGenerator;
 use Doctrine\Persistence\ManagerRegistry;
+use Throwable;
 
 class PropService
 {
     public function __construct(
         private readonly PropRepository $propRepository,
         private readonly ManagerRegistry $doctrine,
-        private readonly AncestorRepository $ancestorRepository
+        private readonly AncestorRepository $ancestorRepository,
+        private readonly TreeGenerator $treeGenerator
     ) {}
 
     public function getByName(string $name): Prop|null
@@ -41,7 +44,7 @@ class PropService
             $em->flush();
 
             $em->getConnection()->commit();
-        } catch (\Throwable $exception) {
+        } catch (Throwable $exception) {
             $em->getConnection()->rollBack();
             throw $exception;
         }
@@ -54,32 +57,9 @@ class PropService
      */
     public function getTree(): array
     {
-        $data = [];
-        $props = $this->propRepository->getRootProps();
-        foreach ($props as $prop) {
-            $data[] = [
-                'id' => $prop->getId(),
-                'name' => $prop->getName(),
-                'children' => $this->getChildrenTree($prop)
-            ];
-        }
+        $data = $this->propRepository->getTreeData();
 
-        return $data;
-    }
-
-    public function getChildrenTree(Prop $prop): array
-    {
-        $tree = [];
-        $children = $prop->getChildren();
-        foreach ($children as $child) {
-            $tree[] = [
-                'id' => $child->getId(),
-                'name' => $child->getName(),
-                'children' => $this->getChildrenTree($child)
-            ];
-        }
-
-        return $tree;
+        return $this->treeGenerator->generate($data);
     }
 
     public function isParentToSelf(Prop $prop, Prop $parent): bool
@@ -105,7 +85,7 @@ class PropService
             $em->flush();
 
             $em->getConnection()->commit();
-        } catch (\Throwable $exception) {
+        } catch (Throwable $exception) {
             $em->getConnection()->rollBack();
             throw $exception;
         }
