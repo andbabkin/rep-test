@@ -2,6 +2,7 @@
 Test task
 
 ## Installation
+### Back-end
 - git clone
 - cp .env .env.local (edit if needed)
 - cd .docker
@@ -20,6 +21,12 @@ Test task
 ```
 - open `http://localhost:8080/` in browser. It should show the Symfony welcome page
 > NB! Probably need to solve permission issues if run on linux system
+
+### Front-end
+- cd ui
+- npm install
+- npm start
+- Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
 
 ## Endpoints
 ### Get property tree
